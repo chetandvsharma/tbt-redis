@@ -1,0 +1,25 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "pro": "nodemon producer.js",
+    "con": "nodemon ./consumer.js"
+  },
+  "keywords": [],
+  "author": "Chetan Sharma",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "morgan": "^1.10.0",
+    "react-router-dom": "^7.0.1",
+    "redis": "^4.7.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13"
+  }
+}
