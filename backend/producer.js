@@ -21,26 +21,35 @@ console.log(await redisClient.ping());
 console.log("Producer WebSocket server running on ws://localhost:5000");
 
 // Generate JSON data at 12,000 messages per second
+let flag = 1;
 setInterval(async () => {
   try {
     const message = JSON.stringify({
-      id: Date.now(),
-      name: `User${Math.floor(Math.random() * 1000)}`,
-      email: `user${Math.floor(Math.random() * 1000)}@example.com`,
-      age: Math.floor(Math.random() * 50) + 18,
-      experience: `${Math.floor(Math.random() * 15)} years`,
-      position: "Developer",
+      Token: flag,
+      Hour_min_sec: Date.now(),
+      open: Math.random(),
+      high: Math.random(),
+      low: Math.random(),
+      close: Math.random(),
+      vol: Math.random(),
+      buyerVol: Math.random(),
+      sellerVol: Math.random(),
+      ofBuyOrders: Math.random(),
+      ofSellOrders: Math.random(),
+      marketIocOrder: Math.random(),
+      algoOrder: Math.random(),
+      discloseOrder: Math.random(),
+      disrderValueAboveThresholdCountCloseOrder: Math.random(),
+      orderValueAboveThresholdValue: Math.random(),
     });
-
-    // console.log("Generated message:", message);
-
+    flag++;
     // Push message to Redis queue
     await redisClient.rPush("messageQueue", message);
     console.log("Message pushed to Redis.");
   } catch (err) {
     console.error("Error pushing message to Redis:", err);
   }
-}, 1000 / 12000); // ~12,000 messages per second
+}, 1000 / 2000); // ~12,000 messages per second
 
 // WebSocket connection handling
 wss.on("connection", (ws) => {

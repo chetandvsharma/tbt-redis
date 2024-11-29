@@ -17,8 +17,8 @@ const App = () => {
         const message = JSON.parse(event.data);
         console.log("Received message:", message);
 
-        setMessages((prevMessages) =>
-          [message, ...prevMessages].slice(0, 100) // Limit to 100 messages
+        setMessages(
+          (prevMessages) => [message, ...prevMessages].slice(0, 2000) // Limit to 100 messages
         );
       } catch (err) {
         console.error("Error parsing WebSocket message:", err);
@@ -49,13 +49,46 @@ const App = () => {
   return (
     <div>
       <h1>Real-Time Messages</h1>
-      <ul>
+      <table>
+        <tr>
+          <th>Token</th>
+          <th>Hour_min_sec</th>
+          <th>open</th>
+          <th>high</th>
+          <th>low</th>
+          <th>close</th>
+          <th>vol</th>
+          <th>buyerVol</th>
+          <th>sellerVol</th>
+          <th>ofBuyOrders</th>
+          <th>ofSellOrders</th>
+          <th>marketIocOrder</th>
+          <th>algoOrder</th>
+          <th>discloseOrder</th>
+          <th>disrderValueAboveThresholdCountCloseOrder</th>
+          <th>orderValueAboveThresholdValue</th>
+        </tr>
         {messages.map((msg, index) => (
-          <li key={index}>
-            {msg.id} - {msg.name} ({msg.email}) - {msg.position}
-          </li>
+          <tr key={index}>
+            <td>{msg.Token}</td>
+            <td>{msg.Hour_min_sec}</td>
+            <td>{msg.open}</td>
+            <td>{msg.high}</td>
+            <td>{msg.low}</td>
+            <td>{msg.close}</td>
+            <td>{msg.vol}</td>
+            <td>{msg.buyerVol}</td>
+            <td>{msg.sellerVol}</td>
+            <td>{msg.ofBuyOrders}</td>
+            <td>{msg.ofSellOrders}</td>
+            <td>{msg.marketIocOrder}</td>
+            <td>{msg.algoOrder}</td>
+            <td>{msg.discloseOrder}</td>
+            <td>{msg.disrderValueAboveThresholdCountCloseOrder}</td>
+            <td>{msg.orderValueAboveThresholdValue}</td>
+          </tr>
         ))}
-      </ul>
+      </table>
     </div>
   );
 };

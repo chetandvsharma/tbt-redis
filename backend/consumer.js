@@ -26,7 +26,7 @@ wss.on("connection", (ws) => {
     } catch (err) {
       console.error("Error processing Redis message:", err);
     }
-  }, 1); // Process messages as fast as possible
+  }, 0); // Process messages as fast as possible
 
   ws.on("close", () => {
     console.log("Frontend disconnected");
