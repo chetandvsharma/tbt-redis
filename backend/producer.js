@@ -49,7 +49,7 @@ setInterval(async () => {
   } catch (err) {
     console.error("Error pushing message to Redis:", err);
   }
-}, 1000 / 2000); // ~12,000 messages per second
+}, 1000 / 2000); // ~2,000 messages per second
 
 // WebSocket connection handling
 wss.on("connection", (ws) => {
