@@ -22,18 +22,43 @@ const broadcastMessage = (message) => {
   });
 };
 
-// Periodically consume messages from Redis and broadcast
-setInterval(async () => {
-  try {
-    const message = await redisClient.lPop("messageQueue"); // Pop the oldest message
-    if (message) {
-      console.log("Broadcasting message:", message);
-      broadcastMessage(message); // Broadcast to all clients
+(async () => {
+  const BATCH_SIZE = 10; // Number of messages to process in each batch
+  const INTERVAL = 5; // Interval in ms
+
+  setInterval(async () => {
+    try {
+      // Fetch multiple messages in one go
+      const messages = await redisClient.lRange("messageQueue", 0, BATCH_SIZE - 1);
+
+      if (messages.length > 0) {
+        // Remove messages from Redis
+        await redisClient.lTrim("messageQueue", messages.length, -1);
+
+        // Broadcast each message
+        messages.forEach((message) => {
+          console.log("Broadcasting message:", message);
+          broadcastMessage(message); // Send to all connected clients
+        });
+      }
+    } catch (err) {
+      console.error("Error consuming messages from Redis:", err);
     }
-  } catch (err) {
-    console.error("Error consuming message from Redis:", err);
-  }
-}, 10); // Adjust interval for performance
+  }, INTERVAL);
+})();
+
+// // Periodically consume messages from Redis and broadcast
+// setInterval(async () => {
+//   try {
+//     const message = await redisClient.lPop("messageQueue"); // Pop the oldest message
+//     if (message) {
+//       console.log("Broadcasting message:", message);
+//       broadcastMessage(message); // Broadcast to all clients
+//     }
+//   } catch (err) {
+//     console.error("Error consuming message from Redis:", err);
+//   }
+// }, 10); // Adjust interval for performance
 
 // Log client connections
 wss.on("connection", (ws) => {
