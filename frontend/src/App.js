@@ -18,7 +18,7 @@ const App = () => {
         console.log("Received message:", message);
 
         setMessages(
-          (prevMessages) => [message, ...prevMessages].slice(0, 2000) // Limit to 100 messages
+          (prevMessages) => [message, ...prevMessages].slice(0, 2000) // Limit to 2000 messages
         );
       } catch (err) {
         console.error("Error parsing WebSocket message:", err);
