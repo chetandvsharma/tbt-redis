@@ -1,69 +1,94 @@
 import { WebSocketServer } from "ws";
 import { createClient } from "redis";
+import cluster from "cluster";
+import os from "os";
 
-// Initialize WebSocket and Redis client
-const wss = new WebSocketServer({ port: 5000 });
-const redisClient = createClient();
+const numCPUs = os.cpus().length;
 
-// Handle Redis client errors
-redisClient.on("error", (err) => {
-  console.error("Redis Client Error:", err);
-});
+// Check if this is the master process
+if (cluster.isMaster) {
+  console.log(`Master process started with PID: ${process.pid}`);
+  console.log(`Forking ${numCPUs} workers...`);
 
-// Confirm Redis client is ready
-redisClient.on("ready", () => {
-  console.log("Redis client ready.");
-});
-
-// Connect Redis client
-await redisClient.connect();
-console.log(await redisClient.ping());
-console.log("Producer WebSocket server running on ws://localhost:5000");
-
-// Generate JSON data at 12,000 messages per second
-let flag = 1;
-setInterval(async () => {
-  try {
-    const message = JSON.stringify({
-      Token: flag,
-      Hour_min_sec: Date.now(),
-      open: Math.random(),
-      high: Math.random(),
-      low: Math.random(),
-      close: Math.random(),
-      vol: Math.random(),
-      buyerVol: Math.random(),
-      sellerVol: Math.random(),
-      ofBuyOrders: Math.random(),
-      ofSellOrders: Math.random(),
-      marketIocOrder: Math.random(),
-      algoOrder: Math.random(),
-      discloseOrder: Math.random(),
-      disrderValueAboveThresholdCountCloseOrder: Math.random(),
-      orderValueAboveThresholdValue: Math.random(),
-    });
-    flag++;
-    // Push message to Redis queue
-    await redisClient.rPush("messageQueue", message);
-    console.log("Message pushed to Redis.");
-  } catch (err) {
-    console.error("Error pushing message to Redis:", err);
+  // Fork workers for each CPU core
+  for (let i = 0; i < numCPUs; i++) {
+    cluster.fork();
   }
-}, 1000 / 2000); // ~2,000 messages per second
 
-// WebSocket connection handling
-wss.on("connection", (ws) => {
-  console.log("Client connected to producer");
-});
+  // Restart workers if they crash
+  cluster.on("exit", (worker, code, signal) => {
+    console.log(`Worker ${worker.process.pid} exited. Forking a new one.`);
+    cluster.fork();
+  });
+} else {
+  // Worker process logic
+  const wss = new WebSocketServer({ port: 5000 });
+  const numRedisClients = 4; // Number of Redis clients for better performance
+  const redisClients = Array.from({ length: numRedisClients }, () => createClient());
 
-// Handle WebSocket server errors
-wss.on("error", (err) => {
-  console.error("WebSocket Server Error:", err);
-});
+  // Initialize Redis clients
+  Promise.all(redisClients.map((client) => client.connect()))
+    .then(() => {
+      console.log(`Worker ${process.pid} connected to Redis.`);
+    })
+    .catch((err) => {
+      console.error(`Worker ${process.pid} failed to connect to Redis:`, err);
+      process.exit(1); // Exit if Redis connection fails
+    });
 
-// Graceful shutdown
-process.on("SIGINT", async () => {
-  console.log("Shutting down...");
-  await redisClient.disconnect();
-  process.exit(0);
-});
+  // Function to distribute Redis clients
+  let clientIndex = 0;
+  const getRedisClient = () => redisClients[clientIndex++ % numRedisClients];
+
+  // Batch size and message generation logic
+  const BATCH_SIZE = 100;
+  const INTERVAL = 1000 / (200 / BATCH_SIZE); // Target ~n messages per second
+  let flag = 1;
+
+  setInterval(async () => {
+    try {
+      const pipeline = getRedisClient().multi(); // Use Redis pipeline
+      for (let i = 0; i < BATCH_SIZE; i++) {
+        const message = JSON.stringify({
+          Token: flag++,
+          Hour_min_sec: new Date(),
+          open: (Math.random() * 1000).toFixed(2),
+          high: (Math.random() * 1000).toFixed(2),
+          low: (Math.random() * 1000).toFixed(2),
+          close: (Math.random() * 1000).toFixed(2),
+          vol: (Math.random() * 10000).toFixed(0),
+          buyerVol: (Math.random() * 10000).toFixed(0),
+          sellerVol: (Math.random() * 10000).toFixed(0),
+          ofBuyOrders: (Math.random() * 10000).toFixed(0),
+          ofSellOrders: (Math.random() * 10000).toFixed(0),
+          marketIocOrder: (Math.random() * 10000).toFixed(0),
+          algoOrder: (Math.random() * 10000).toFixed(0),
+          discloseOrder: (Math.random() * 10000).toFixed(0),
+          disrderValueAboveThresholdCountCloseOrder: (Math.random() * 10000).toFixed(0),
+          orderValueAboveThresholdValue: (Math.random() * 10000).toFixed(0),
+        });
+        pipeline.rPush("messageQueue", message);
+      }
+      await pipeline.exec(); // Execute pipeline
+    } catch (err) {
+      console.error(`Worker ${process.pid} failed to push messages:`, err);
+    }
+  }, INTERVAL);
+
+  // WebSocket connection handling
+  wss.on("connection", (ws) => {
+    console.log(`Worker ${process.pid}: Client connected to producer`);
+  });
+
+  // Handle WebSocket server errors
+  wss.on("error", (err) => {
+    console.error(`Worker ${process.pid} WebSocket Server Error:`, err);
+  });
+
+  // Graceful shutdown
+  process.on("SIGINT", async () => {
+    console.log(`Worker ${process.pid} shutting down...`);
+    await Promise.all(redisClients.map((client) => client.disconnect()));
+    process.exit(0);
+  });
+}
